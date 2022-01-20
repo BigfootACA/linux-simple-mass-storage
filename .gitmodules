@@ -1,0 +1,6 @@
+[submodule "kernel"]
+	path = kernel
+	url = https://github.com/torvalds/linux.git
+[submodule "musl"]
+	path = musl
+	url = git://git.musl-libc.org/musl

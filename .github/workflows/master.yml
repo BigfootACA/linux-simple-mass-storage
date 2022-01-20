@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Update
+        run: sudo apt-get update
+      - name: Install
+        run: sudo apt-get install -y build-essential git gcc-aarch64-linux-gnu bc libncurses-dev make cpio gzip
+      - name: Build sdm845-minimal
+        run: make -j4 CONFIG=sdm845-minimal
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: mass-storage-sdm845-minimal-image.gz
+          path: Image.gz

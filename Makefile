@@ -11,7 +11,7 @@ X_CFLAGS          = -Werror -Wall -Wextra -isystem $(SYSROOT)/include
 X_LDFLAGS         = -static -s -flto
 X_LIBS            = $(LIBDIR)/crt1.o $(LIBDIR)/libc.a $(LIBDIR)/crti.o $(LIBDIR)/crtn.o -lgcc
 export ARCH CROSS_COMPILE
-all: Image.gz
+all: Image.gz LinuxSimpleMassStorage.efi
 src/init.c: src/config.h sysroot/include
 src/init.o: src/init.c
 	$(CC) $(X_CCFLAGS) $(X_CFLAGS) -c $< -o $@
@@ -41,9 +41,11 @@ kernel/Makefile: .stamp-submodule
 	git submodule update --depth 1 --jobs 2
 	touch .stamp-submodule
 Image: kernel/arch/arm64/boot/Image
-	cp $^ $@
+	cp $< $@
 Image.gz: Image
-	gzip < $^ > $@
+	gzip < $< > $@
+LinuxSimpleMassStorage.efi: Image LinuxSimpleMassStorage.inf
+	cp $< $@
 clean-bin:
 	rm -f initramfs.cpio init *.o Image Image.gz
 clean-musl:

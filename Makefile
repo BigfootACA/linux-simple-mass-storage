@@ -25,7 +25,7 @@ sysroot/include: sysroot/lib/libc.a
 sysroot/lib/libc.a: musl/lib/libc.a musl/config.mak kernel/Makefile
 	$(MAKE) -C musl DESTDIR="$(SYSROOT)" install
 	$(MAKE) -C kernel INSTALL_HDR_PATH="$(SYSROOT)" headers_install
-initramfs.cpio: init
+initramfs.cpio: init splash-started.svg splash-starting.svg
 	ls -1 $^ | cpio -o -H newc > $@
 kernel/.config: configs/$(CONFIG).config kernel/Makefile
 	cp $< kernel/arch/arm64/configs/kernel_defconfig

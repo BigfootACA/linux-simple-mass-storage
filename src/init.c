@@ -2,6 +2,7 @@
 #include<fcntl.h>
 #include<errno.h>
 #include<stdio.h>
+#include<stdint.h>
 #include<stdarg.h>
 #include<stdlib.h>
 #include<string.h>
@@ -10,10 +11,26 @@
 #include<limits.h>
 #include<libgen.h>
 #include<stdbool.h>
+#include<sys/mman.h>
 #include<sys/stat.h>
+#include<sys/ioctl.h>
 #include<sys/mount.h>
 #include<sys/sysmacros.h>
+#include<linux/fb.h>
 #define O_DIR O_RDONLY|O_DIRECTORY
+#ifndef MIN
+#define MIN(a,b)((b)>(a)?(a):(b))
+#endif
+#ifndef MAX
+#define MAX(a,b)((b)<(a)?(a):(b))
+#endif
+
+#if DISPLAY_SVG == 1
+#define NANOSVG_IMPLEMENTATION
+#define NANOSVGRAST_IMPLEMENTATION
+#include"nanosvg.h"
+#include"nanosvgrast.h"
+#endif
 
 #define EGOTO(err,str...) {\
 	e=ERROR(err,str);\
@@ -27,7 +44,11 @@
 #error conflict backend method
 #endif
 
+static int fbdev_fd=-1;
 static int out_fd=STDERR_FILENO;
+static void*fbdev_mem=NULL;
+static struct fb_var_screeninfo vinfo;
+static struct fb_fix_screeninfo finfo;
 
 #if USE_DEBUG == 1
 #define DEBUG(str...) debug(__func__,str)
@@ -197,6 +218,85 @@ static void init_fs(void){
 	#endif
 	init_console();
 }
+
+static int init_fbdev(void){
+	int e=0;
+	if((fbdev_fd=open(PATH_FBDEV,O_RDWR))<0)
+		EGOTO(-1,"open fbdev failed");
+	if(ioctl(fbdev_fd,FBIOGET_FSCREENINFO,&finfo)==-1)
+		EGOTO(-1,"ioctl FBIOGET_FSCREENINFO failed");
+	if(ioctl(fbdev_fd,FBIOGET_VSCREENINFO,&vinfo)==-1)
+		EGOTO(-1,"ioctl FBIOGET_VSCREENINFO failed");
+	if(finfo.smem_len<=0)EGOTO(-1,"invalid fbdev memory size");
+	if(vinfo.xres<=0)EGOTO(-1,"invalid width size");
+	if(vinfo.yres<=0)EGOTO(-1,"invalid height size");
+	if(vinfo.bits_per_pixel!=32&&vinfo.bits_per_pixel!=24)
+		EGOTO(-1,"unsupported bpp %d",vinfo.bits_per_pixel);
+	fbdev_mem=(char*)mmap(0,finfo.smem_len,PROT_READ|PROT_WRITE,MAP_SHARED,fbdev_fd,0);
+	if((intptr_t)fbdev_mem==-1||!fbdev_mem)EGOTO(-1,"mmap failed");
+	memset(fbdev_mem,0,finfo.smem_len);
+	ioctl(fbdev_fd,FBIOPAN_DISPLAY,&vinfo);
+	ioctl(fbdev_fd,FBIOBLANK,0);
+	DEBUG("fbdev screen size: %dx%d\n",vinfo.xres,vinfo.yres);
+	return 0;
+	fail:
+	if(fbdev_fd>0)close(fbdev_fd);
+	if(fbdev_mem)munmap(fbdev_mem,finfo.smem_len);
+	fbdev_fd=-1,fbdev_mem=NULL;
+	return e;
+}
+
+#if DISPLAY_SVG == 1
+static int draw_svg_splash(const char*path){
+	int e=0;
+	NSVGimage*m=NULL;
+	NSVGrasterizer*rast=NULL;
+	uint8_t*mem=NULL,*x=NULL;
+	if(!fbdev_mem)return -1;
+	memset(fbdev_mem,0,finfo.smem_len);
+	DEBUG("load svg %s\n",path);
+	if(!(m=nsvgParseFromFile(path,"px",SVG_DPI)))
+		EGOTO(-1,"read svg failed");
+	DEBUG("svg size: %0.0fx%0.0f\n",m->width,m->height);
+	if(!(rast=nsvgCreateRasterizer()))
+		EGOTO(-1,"create rasterizer failed");
+	float ps=MIN(
+		vinfo.xres*DISPLAY_SCALE/m->width,
+		vinfo.yres*DISPLAY_SCALE/m->height
+	);
+	int pw=m->width*ps,ph=m->height*ps;
+	DEBUG("svg scale: %0.2f (%dx%d)\n",ps,pw,ph);
+	if(!(x=mem=malloc(pw*ph*4)))EGOTO(-1,"alloc for svg failed");
+	memset(mem,0,pw*ph*4);
+	nsvgRasterize(rast,m,0,0,ps,mem,pw,ph,pw*4);
+	int px=(vinfo.xres-pw)/2,py=(vinfo.yres-ph)/2;
+	int bs=vinfo.bits_per_pixel/8;
+	DEBUG("svg draw pos: %dx%d\n",px,py);
+	uint8_t*dst=fbdev_mem+(py*vinfo.xres*bs);
+	for(int y=0;y<ph;y++){
+		dst+=px*bs;
+		for(int x=0;x<pw;x++){
+			dst[0]=mem[2];
+			dst[1]=mem[1];
+			dst[2]=mem[0];
+			dst+=bs,mem+=4;
+		}
+		dst+=(vinfo.xres-px-pw)*bs;
+	}
+	ioctl(fbdev_fd,FBIOPAN_DISPLAY,&vinfo);
+	if(rast)nsvgDeleteRasterizer(rast);
+	if(m)nsvgDelete(m);
+	if(x)free(x);
+	return 0;
+	fail:
+	memset(fbdev_mem,0,finfo.smem_len);
+	ioctl(fbdev_fd,FBIOPAN_DISPLAY,&vinfo);
+	if(rast)nsvgDeleteRasterizer(rast);
+	if(m)nsvgDelete(m);
+	if(x)free(x);
+	return e;
+}
+#endif
 
 static ssize_t write_file(int fd,const char*content,const char*file,...){
 	va_list va;
@@ -394,9 +494,16 @@ static int init_gadget(void){
 int main(void){
 	(void)check_env();
 	(void)init_fs();
+	(void)init_fbdev();
+	#if DISPLAY_SVG == 1
+	(void)draw_svg_splash(SVG_PRE_PATH);
+	#endif
 	#if USE_BUSYBOX_ASH == 1
 	if(fork()==0)_exit(execl("/busybox","ash",NULL));
 	#endif
 	(void)init_gadget();
+	#if DISPLAY_SVG == 1
+	(void)draw_svg_splash(SVG_POST_PATH);
+	#endif
 	while(1)sleep(3600);
 }

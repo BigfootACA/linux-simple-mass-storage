@@ -4,6 +4,11 @@
 #define USE_DEBUG        1
 #define USE_ERROR        1
 #define USE_DEVTMPFS     0
+#define DISPLAY_SVG      1
+#define DISPLAY_SCALE    0.75
+#define SVG_DPI          200
+#define SVG_PRE_PATH     "/splash-starting.svg"
+#define SVG_POST_PATH    "/splash-started.svg"
 #define SERIAL_NUMBER    "1234567890"
 #define USB_ID_PRODUCT   "0x1234"
 #define USB_ID_VENDOR    "0x05F9"
@@ -28,3 +33,4 @@
 #define PATH_FABRIC PATH_TARGET"/usb_gadget"
 #define PATH_NAA PATH_FABRIC"/"TARGET_NAA
 #define PATH_TPGT PATH_NAA"/tpgt_1"
+#define PATH_FBDEV PATH_DEV"/fb0"

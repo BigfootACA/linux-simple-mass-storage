@@ -1,6 +1,4 @@
-#define USE_TCM          1
 #define USE_BUSYBOX_ASH  0
-#define USE_MASS_STORAGE 0
 #define USE_DEBUG        1
 #define USE_ERROR        1
 #define USE_DEVTMPFS     0

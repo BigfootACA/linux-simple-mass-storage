@@ -37,13 +37,6 @@
 	goto fail;\
 }
 
-#if USE_TCM == 0 && USE_MASS_STORAGE == 0
-#error no backend method
-#endif
-#if USE_TCM == 1 && USE_MASS_STORAGE == 1
-#error conflict backend method
-#endif
-
 static int fbdev_fd=-1;
 static int out_fd=STDERR_FILENO;
 static void*fbdev_mem=NULL;
@@ -377,8 +370,7 @@ static int start_gadget(int g){
 	return e;
 }
 
-#if USE_MASS_STORAGE == 1
-static void gadget_add_mass_storage(int g,int b,long size,char*name,char*path){
+static void gadget_add_mass_storage(int g,int b,char*name,char*path){
 	char func[PATH_MAX]="functions/mass_storage.";
 	strcat(func,name);
 	size_t l=strlen(func);
@@ -390,9 +382,7 @@ static void gadget_add_mass_storage(int g,int b,long size,char*name,char*path){
 	func[l]=0;
 	symlinkat(func,b,name);
 }
-#endif
 
-#if USE_TCM == 1
 static void gadget_add_target(char*name,char*path){
 	static int lun=0;
 	char control[PATH_MAX*2]={0};
@@ -411,22 +401,21 @@ static void gadget_add_target(char*name,char*path){
 	symlink(blk_path,lun_path);
 	lun++;
 }
-#endif
 
 static int gadget_add_blocks(int g,int b){
 	DIR*bs=NULL;
+	bool tcm=true;
 	struct stat st;
 	struct dirent*d;
 	int blk=0,e=0,s=-1;
 	char ss[64],path[PATH_MAX];
 	errno=0;
-	#if USE_TCM == 1
-	mkdirat(g,"functions/tcm.target",0755);
-	mkdir(PATH_TARGET_CORE,0755);
-	mkdir(PATH_FABRIC,0755);
-	mkdir(PATH_NAA,0755);
-	mkdir(PATH_TPGT,0755);
-	#endif
+	if(mkdirat(g,"functions/tcm.target",0755)<0)tcm=false;
+	if(mkdir(PATH_TARGET_CORE,0755)<0)tcm=false;
+	if(mkdir(PATH_FABRIC,0755)<0)tcm=false;
+	if(mkdir(PATH_NAA,0755)<0)tcm=false;
+	if(mkdir(PATH_TPGT,0755)<0)tcm=false;
+	if(!tcm)DEBUG("tcm failed, fallback to mass_storage\n");
 	if(!(s=open(PATH_BLOCK,O_DIR))||!(bs=fdopendir(s)))
 		EGOTO(-1,"open "PATH_BLOCK" failed");
 	while((d=readdir(bs))){
@@ -438,12 +427,8 @@ static int gadget_add_blocks(int g,int b){
 		if(stat(path,&st)!=0)continue;
 		if(!S_ISBLK(st.st_mode))continue;
 		DEBUG("found block %s\n",d->d_name);
-		#if USE_MASS_STORAGE == 1
-		gadget_add_mass_storage(b,d->d_name,path);
-		#endif
-		#if USE_TCM == 1
-		gadget_add_target(d->d_name,path);
-		#endif
+		if(tcm)gadget_add_target(d->d_name,path);
+		else gadget_add_mass_storage(g,b,d->d_name,path);
 		blk++;
 	}
 	if(blk<=0)EGOTO(-1,"no any block devices found");

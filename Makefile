@@ -40,6 +40,8 @@ kernel/Makefile: .stamp-submodule
 	git submodule sync
 	git submodule update --depth 1 --jobs 2
 	touch .stamp-submodule
+kernel-menuconfig: configs/$(CONFIG).config kernel/Makefile
+	$(MAKE) -C kernel menuconfig
 Image: kernel/arch/arm64/boot/Image
 	cp $< $@
 Image.gz: Image
@@ -55,4 +57,4 @@ clean-kernel:
 clean-sysroot:
 	rm -rf sysroot
 clean: clean-bin clean-musl clean-kernel clean-sysroot
-.PHONY: clean clean-bin clean-musl clean-kernel clean-sysroot all
+.PHONY: clean clean-bin clean-musl clean-kernel clean-sysroot all kernel-menuconfig

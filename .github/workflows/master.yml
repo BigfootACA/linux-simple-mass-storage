@@ -14,7 +14,7 @@ jobs:
           - msm8998-minimal
           - msm8998-debug-screen
           - sdm845-minimal
-          - sdm845-debug-uart
+          - sdm845-debug-serial
           - sdm845-debug-screen
           - qemu-minimal
           - qemu-debug-serial

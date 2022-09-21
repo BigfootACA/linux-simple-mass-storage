@@ -8,6 +8,17 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config:
+          - msm8998-minimal
+          - msm8998-debug-screen
+          - sdm845-minimal
+          - sdm845-debug-uart
+          - sdm845-debug-screen
+          - qemu-minimal
+          - qemu-debug-serial
+          - qemu-debug-usbip
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -15,10 +26,10 @@ jobs:
         run: sudo apt-get update
       - name: Install
         run: sudo apt-get install -y build-essential git gcc-aarch64-linux-gnu bc libncurses-dev make cpio gzip
-      - name: Build sdm845-minimal
-        run: make -j4 CONFIG=sdm845-minimal
+      - name: Build ${{ matrix.config }}
+        run: make -j4 CONFIG=${{ matrix.config }}
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
-          name: mass-storage-sdm845-minimal-image.gz
+          name: mass-storage-${{ matrix.config }}-image.gz
           path: Image.gz

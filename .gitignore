@@ -29,9 +29,13 @@
 *.pcf
 *.pcf.*
 *.efi
+*.dtb
 .stamp-*
 /init
+/init_debug
 /busybox
+/usbipd
+/gdbserver
 initramfs*.*
 initrd*.*
 System.map*
@@ -50,3 +54,4 @@ fonts.scale
 fonts.dir
 Image
 Image.gz
+compile_commands.json

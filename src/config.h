@@ -1,28 +1,49 @@
+#define VERSION          "0.0.1"
 #define USE_BUSYBOX_ASH  0
+#define USE_GDB_SERVER   0
+#define USE_USBIPD       0
+#define GDB_SERVER_PORT  "/dev/ttyS0"
 #define USE_DEBUG        1
 #define USE_ERROR        1
+#define DEBUG_TAG        1
+#define DEBUG_LOCATION   0
 #define USE_DEVTMPFS     0
+#define DISPLAY_INIT     1
+#define DISPLAY_IMAGE    1
 #define DISPLAY_SVG      1
+#define DISPLAY_STB      0
 #define DISPLAY_SCALE    0.75
+#define DISPLAY_JUMP     0
+#define DISPLAY_FLUSH    1
+#define FASTBOOT_CLS     0xFF
+#define FASTBOOT_SUBCLS  0x42
+#define FASTBOOT_PROTO   0x03
+#define FASTBOOT_NAME    "fastboot"
+#define MAX_BUFFER_SIZE  0
+#define IMG_PRE_PATH     "/splash-starting.svg"
+#define IMG_POST_PATH    "/splash-started.svg"
 #define SVG_DPI          200
-#define SVG_PRE_PATH     "/splash-starting.svg"
-#define SVG_POST_PATH    "/splash-started.svg"
 #define SERIAL_NUMBER    "1234567890"
-#define USB_ID_PRODUCT   "0x1234"
-#define USB_ID_VENDOR    "0x05F9"
+#define USB_ID_PRODUCT   0x1234
+#define USB_ID_VENDOR    0x05F9
 #define USB_MANUFACTURER "Linux"
 #define USB_PRODUCT      "Mass Storage"
-#define USB_CONFIG       "USB SCSI"
-#define TARGET_NAA       "naa."SERIAL_NUMBER
+#define GADGET_NAME      "gadget"
+#define TARGET_NAA       "naa." SERIAL_NUMBER
 
 /* do not change */
+#define PATH_TMP "/tmp"
 #define PATH_DEV "/dev"
 #define PATH_SYS "/sys"
+#define PATH_PROC "/proc"
 #define PATH_SYS_DEV PATH_SYS"/dev"
 #define PATH_UDC PATH_SYS"/class/udc"
 #define PATH_NULL PATH_DEV"/null"
 #define PATH_KMSG PATH_DEV"/kmsg"
+#define PATH_SHM PATH_DEV"/shm"
+#define PATH_MQUEUE PATH_DEV"/mqueue"
 #define PATH_CONSOLE PATH_DEV"/console"
+#define PATH_HUGEPAGES PATH_DEV"/hugepages"
 #define PATH_BLOCK PATH_SYS"/block"
 #define PATH_CONFIGFS PATH_SYS"/kernel/config"
 #define PATH_GADGET PATH_CONFIGFS"/usb_gadget"

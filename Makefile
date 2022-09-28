@@ -2,21 +2,31 @@ ARCH              = arm64
 TARGET            = aarch64-linux-gnu
 CROSS_COMPILE     = $(TARGET)-
 CC                = $(CROSS_COMPILE)gcc
+AR                = $(CROSS_COMPILE)ar
+STRIP             = $(CROSS_COMPILE)strip
+RANLIB            = $(CROSS_COMPILE)ranlib
 KBUILD_BUILD_USER = bigfoot
 KBUILD_BUILD_HOST = classfun.cn
 SYSROOT           = $(PWD)/sysroot
 LIBDIR            = $(SYSROOT)/lib
-X_CCFLAGS         = -nostdinc -nolibc -nostartfiles -nostdlib -Os
-X_CFLAGS          = -Werror -Wall -Wextra -isystem $(SYSROOT)/include
-X_LDFLAGS         = -static -s -flto
+X_CCFLAGS         = -Os -g -nostdinc -nolibc -nostartfiles -nostdlib
+X_CFLAGS          = -D_GNU_SOURCE -Werror -Wall -Wextra -Wno-format-truncation -Iexternal -Isrc -isystem $(SYSROOT)/include
+X_LDFLAGS         = -flto -static
 X_LIBS            = $(LIBDIR)/crt1.o $(LIBDIR)/libc.a $(LIBDIR)/crti.o $(LIBDIR)/crtn.o -lgcc
 export ARCH CROSS_COMPILE
 all: Image.gz LinuxSimpleMassStorage.efi
-src/init.c: src/config.h sysroot/include
-src/init.o: src/init.c
+include deps.mk
+%.a:
+	$(AR) cr $@ $^
+	$(RANLIB) $@
+src/%.o: src/%.c
 	$(CC) $(X_CCFLAGS) $(X_CFLAGS) -c $< -o $@
-init: src/init.o sysroot/lib/libc.a
-	$(CC) $(X_CCFLAGS) $(X_LDFLAGS) $< $(X_LIBS) -o $@
+external/libblkid/%.o: external/libblkid/%.c
+	$(CC) $(X_CCFLAGS) $(X_CFLAGS) -Iexternal/libblkid -c $< -o $@
+init_debug: $(INIT_LINKS)
+	$(CC) $(X_CCFLAGS) $(X_LDFLAGS) -Wl,--start-group $^ -Wl,--end-group $(X_LIBS) -o $@
+init: init_debug
+	$(STRIP) -o $@ $<
 musl/config.mak: musl/configure
 	cd musl;./configure --target=$(TARGET) --prefix=/
 musl/lib/libc.a: musl/config.mak
@@ -42,6 +52,21 @@ kernel/Makefile: .stamp-submodule
 	touch .stamp-submodule
 kernel-menuconfig: configs/$(CONFIG).config kernel/Makefile
 	$(MAKE) -C kernel menuconfig
+qemu-run: Image.gz
+	qemu-system-aarch64 \
+		-m 1G \
+		-display none \
+		-machine virt \
+		-cpu cortex-a57 \
+		-kernel Image.gz \
+		-chardev stdio,id=char0 \
+		-chardev pty,id=char1 \
+		-netdev bridge,id=eth0,br=virbr0 \
+		-serial chardev:char0 \
+		-drive file=1.img,format=raw,if=none,id=blk0 \
+		-device pci-serial,chardev=char1 \
+		-device e1000e,netdev=eth0 \
+		-device nvme,drive=blk0,serial=INTERNAL
 Image: kernel/arch/arm64/boot/Image
 	cp $< $@
 Image.gz: Image

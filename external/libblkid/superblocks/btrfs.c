@@ -140,9 +140,9 @@ static int sb_log_offset(blkid_probe pr, uint64_t *bytenr_ret)
 	uint32_t zone_size_sector;
 	struct blk_zone_report *rep;
 	struct blk_zone *zones;
-	int ret;
-	int i;
-	uint64_t wp;
+	int ret = 0;
+	int i = 0;
+	uint64_t wp = 0;
 
 
 	zone_size_sector = pr->zone_size >> SECTOR_SHIFT;

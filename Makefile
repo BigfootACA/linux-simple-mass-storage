@@ -74,7 +74,7 @@ Image.gz: Image
 LinuxSimpleMassStorage.efi: Image LinuxSimpleMassStorage.inf
 	cp $< $@
 clean-bin:
-	rm -f initramfs.cpio init *.o Image Image.gz
+	rm -f initramfs.cpio init *.o Image Image.gz src/*.o src/*.a src/fastboot/*.o
 clean-musl:
 	$(MAKE) -C musl clean
 clean-kernel:
